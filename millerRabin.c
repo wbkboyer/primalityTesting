@@ -1,10 +1,91 @@
 #include <stdio.h>
+#include <argp.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
+
+const char *program_version = "Primality Testing v1.0";
+const char *program_author = "Wanda Boyer";
+const char *program_email = "<wbkboyer@gmail.com>";
+
+/* Program documentation. */
+static char doc[] = "Implementation of the probabilistic and deterministic Miller Rabin algorithms to generate primes.";
+
+/* A description of the arguments we accept. */
+static char args_doc[] = "numPrimes startingAfter accuracyFactor outfile";
+
+/* The options we understand. */
+static struct argp_option options[] = {
+    {"numPrimes",          'n',             0,                  0,
+        "How many primes you wish to generate" },
+    {"startingAfter",      's',             0,                  OPTION_ARG_OPTIONAL, 
+        "Look for primes greater than this number"},
+    {"accuracyFactor",     'a',             0,                  OPTION_ARG_OPTIONAL, 
+        "If using the probabilistic Miller Rabin \
+            algorithm, specify how many iterations\
+            should be performed (recommended to use >= 10)"},
+    {"outfile",              'o',             "FILE",             OPTION_ARG_OPTIONAL,
+        "Specify path to file to create if you \
+            don't want to output to command line."},
+    {0}
+};
+
+/* Used by main to communicate with parse_opt. */
+struct arguments
+{
+    char *args[4];                /* numPrimes, startingAfter, accuracyFactor, output*/
+    int numPrimes, startingAfter, accuracyFactor;
+    char *outfile;
+};
+
+/* Parse a single option. */
+static error_t
+parse_opt (int key, char *arg, struct argp_state *state)
+{
+    /* Get the input argument from argp_parse, which we
+       know is a pointer to our arguments structure. */
+    struct arguments *arguments = state->input;
+
+    switch (key)
+          {
+          case 'n':
+            arguments->numPrimes = atoi(arg);
+            break;
+          case 's':
+            arguments->startingAfter = atoi(arg);
+            break;
+          case 'a':
+            arguments->accuracyFactor = atoi(arg);
+            break;
+          case 'o':
+            arguments->outfile = arg;
+
+          case ARGP_KEY_ARG:
+            if (state->arg_num > 4)
+              /* Too many arguments. */
+              argp_usage (state);
+
+            arguments->args[state->arg_num] = arg;
+
+            break;
+
+          case ARGP_KEY_END:
+            if (state->arg_num < 2)
+              /* Not enough arguments. */
+              argp_usage (state);
+            break;
+
+          default:
+            return ARGP_ERR_UNKNOWN;
+          }
+    return 0;
+}
+
+/* Our argp parser. */
+static struct argp argp = { options, parse_opt, args_doc, doc };
 
 struct FactoredNumber{
     int num;
@@ -36,58 +117,52 @@ int integerPower(int base, int power);
 /////
 
 int main(int argc, char **argv) {
+    struct arguments arguments;
+    FILE *outstream;
+
     static int numPrimes;
     static int accuracyFactor;
     static int startingAfter;
     static bool useDeterministic;
-
     if (argc == 1) {
         // need to get num primes to generate from stdin
         useDeterministic = getNumPrimesToGenerate(&numPrimes, &startingAfter, &accuracyFactor);
-    }
-    else if ((argc == 2) || (argc == 3) || (argc == 4)) {
-        int numArgs = argc - 1;
-        char **argsToMain = (argv + 1);
-        confirmNumPrimesToGenerate(numArgs, argsToMain, &numPrimes, &startingAfter, &accuracyFactor);
+        if (useDeterministic == true) {
+            accuracyFactor = -1; // will signal to use deterministic MR algo
+        }
     }
     else {
-        printf("Only enter one integer indicating how many primes to generate when passing in args.\n");
-        useDeterministic = getNumPrimesToGenerate(&numPrimes, &startingAfter, &accuracyFactor);
+        /* Set argument defaults */
+        arguments.outfile = NULL;
+        arguments.numPrimes = 5;
+        arguments.startingAfter = 1;
+        arguments.accuracyFactor = -1;
+
+        argp_parse (&argp, argc, argv, 0, 0, &arguments);
+    
+        /* Where do we send output? */
+        if (arguments.outfile)
+            outstream = fopen (arguments.outfile, "w");
+        else
+            outstream = stdout;
+
+        numPrimes = arguments.numPrimes;
+        startingAfter = arguments.startingAfter;
+        accuracyFactor = arguments.startingAfter;
     }
-    if (useDeterministic == true) {
-        accuracyFactor = -1; // will signal to use deterministic MR algo
-    }
+
     int *primes = generatePrimes(numPrimes, startingAfter, accuracyFactor);
     int *currentPrime = primes;
-    printf("Here are the %d primes you requested, starting after %d:\n", numPrimes, startingAfter);
+    if (arguments.outfile == NULL){
+        fprintf(outstream, "Here are the %d primes you requested, starting after %d:\n", numPrimes, startingAfter);
+    }
     for (int i = 0; i < numPrimes; i++) {
-        printf("%d\n", *(currentPrime++));
+        for (int j = 0; j < 10; j++) {
+            fprintf(outstream, "%10d", *(currentPrime++));
+        }
+        fprintf(outstream, "\n");
     }
     free(primes);
-}
-
-void confirmNumPrimesToGenerate(int numArgs, char **argsToMain, int *numPrimes, int *startingAfter, int *accuracyFactor) {
-    char correctNumPrimes;
-    bool invalidChoice = true;
-
-    *numPrimes = (int)strtol(*(argsToMain), NULL, 10);
-    *numPrimes = (*numPrimes > 0) ? *numPrimes : 1; // at least one prime
-    *accuracyFactor = (numArgs >= 2) ? (int)strtol(*(argsToMain+1), NULL, 10) : 10; // default: use probabilistic algorithm
-    *startingAfter = (numArgs == 3) ? (int)strtol(*(argsToMain+2), NULL, 10) : 2; // default: all primes must be from 2 onwards
-    do {
-        printf("You requested %d primes to be generated, starting from %d\nwith an accuracy of %d; is this correct? ", *numPrimes, *startingAfter, *accuracyFactor);
-        if (*accuracyFactor <= 10) {
-            printf("As well, since\nyou chose an accuracy factor of %d, it is recommended\nthat either you continue and use the deterministic\nMiller Rabin algorithm, or that you choose\na larger value for your accuracy factor; include this fact\nin considering your answer.\n", *accuracyFactor);
-        }
-        printf("\n\tType Y for yes and N for no.\n");
-        scanf("%c", &correctNumPrimes);
-        if (correctNumPrimes == 'Y' || correctNumPrimes == 'y') {
-            break;
-        }
-        else if (correctNumPrimes == 'N' || correctNumPrimes == 'n') {
-            getNumPrimesToGenerate(numPrimes, startingAfter, accuracyFactor);      
-        }
-    } while (invalidChoice);
 }
 
 bool getNumPrimesToGenerate(int *numPrimes, int *startingAfter, int *accuracyFactor) {
