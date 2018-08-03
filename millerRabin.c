@@ -19,17 +19,17 @@ static char args_doc[] = "numPrimes startingAfter accuracyFactor outfile";
 
 /* The options we understand. */
 static struct argp_option options[] = {
-    {"numPrimes",          'n',             0,                  0,
-        "How many primes you wish to generate" },
-    {"startingAfter",      's',             0,                  OPTION_ARG_OPTIONAL, 
-        "Look for primes greater than this number"},
-    {"accuracyFactor",     'a',             0,                  OPTION_ARG_OPTIONAL, 
+    {"numPrimes",          'n',             "NUM_PRIMES",                  0,
+        "How many primes you wish to generate", 0},
+    {"startingAfter",      's',             "STARTING_AFTER",              OPTION_ARG_OPTIONAL, 
+        "Look for primes greater than this number", 1},
+    {"accuracyFactor",     'a',             "ACCURACY_FACTOR",             OPTION_ARG_OPTIONAL, 
         "If using the probabilistic Miller Rabin \
             algorithm, specify how many iterations\
-            should be performed (recommended to use >= 10)"},
-    {"outfile",              'o',             "FILE",             OPTION_ARG_OPTIONAL,
+            should be performed (recommended to use >= 10)", 2},
+    {"outfile",            'o',             "FILE_PATH",                   OPTION_ARG_OPTIONAL,
         "Specify path to file to create if you \
-            don't want to output to command line."},
+            don't want to output to command line.", 3},
     {0}
 };
 
@@ -62,6 +62,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
             break;
           case 'o':
             arguments->outfile = arg;
+            break;
 
           case ARGP_KEY_ARG:
             if (state->arg_num > 4)
@@ -85,7 +86,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 }
 
 /* Our argp parser. */
-static struct argp argp = { options, parse_opt, args_doc, doc };
+static struct argp argp = { options, parse_opt, args_doc, doc , 0, 0, 0};
 
 struct FactoredNumber{
     int num;
@@ -138,9 +139,7 @@ int main(int argc, char **argv) {
         arguments.numPrimes = 5;
         arguments.startingAfter = 1;
         arguments.accuracyFactor = -1;
-
         argp_parse (&argp, argc, argv, 0, 0, &arguments);
-    
         /* Where do we send output? */
         if (arguments.outfile)
             outstream = fopen (arguments.outfile, "w");
@@ -163,6 +162,8 @@ int main(int argc, char **argv) {
             fprintf(outstream, "%10d", *(currentPrime++));
         }
         fprintf(outstream, "\n");
+        if (*currentPrime == -1)
+            break;
     }
     free(primes);
 }
