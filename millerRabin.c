@@ -95,7 +95,6 @@ struct FactoredNumber{
 
 /////
 // CONFIG
-void confirmNumPrimesToGenerate(int numArgs, char **argsToMain, int *numPrimes, int *startingAfter, int *accuracyFactor);
 bool getNumPrimesToGenerate(int *numPrimes, int *startingAfter, int *accuracyFactor);
 
 // PRIMALITY TESTING
@@ -124,12 +123,14 @@ int main(int argc, char **argv) {
     static int accuracyFactor;
     static int startingAfter;
     static bool useDeterministic;
+
     if (argc == 1) {
         // need to get num primes to generate from stdin
         useDeterministic = getNumPrimesToGenerate(&numPrimes, &startingAfter, &accuracyFactor);
         if (useDeterministic == true) {
             accuracyFactor = -1; // will signal to use deterministic MR algo
         }
+        outstream = stdout;
     }
     else {
         /* Set argument defaults */
@@ -150,14 +151,15 @@ int main(int argc, char **argv) {
         startingAfter = arguments.startingAfter;
         accuracyFactor = arguments.startingAfter;
     }
-
     int *primes = generatePrimes(numPrimes, startingAfter, accuracyFactor);
     int *currentPrime = primes;
     if (arguments.outfile == NULL){
         fprintf(outstream, "Here are the %d primes you requested, starting after %d:\n", numPrimes, startingAfter);
     }
-    for (int i = 0; i < numPrimes; i++) {
-        for (int j = 0; j < 10; j++) {
+    int j;
+    for (int i = 0; i < (numPrimes/10 + numPrimes % 10); i++){
+        j = 0;
+        while (j++ < 10 && *currentPrime != -1){
             fprintf(outstream, "%10d", *(currentPrime++));
         }
         fprintf(outstream, "\n");
@@ -174,7 +176,7 @@ bool getNumPrimesToGenerate(int *numPrimes, int *startingAfter, int *accuracyFac
         printf("From where shall we start listing primes? (defaults to all primes from 2 onwards)\n");
         scanf("%d", startingAfter);
 
-        printf("Roughly how accurate do you wish this probabilistic approach to be? \n\t N.B. Enter some number greater than 10, so as to reduce\n\tthe chance of falsely identifying a composite number as the next possible prime.");
+        printf("Roughly how accurate do you wish this probabilistic approach to be? \n\t N.B. Enter some number greater than 10, so as to reduce\n\tthe chance of falsely identifying a composite number as the next possible prime.\n");
         scanf("%d", accuracyFactor);
 
         if (*accuracyFactor < 10) {
@@ -194,7 +196,7 @@ bool getNumPrimesToGenerate(int *numPrimes, int *startingAfter, int *accuracyFac
 
 int* generatePrimes(int numPrimes, int startingAfter, int accuracyFactor) {
     int *primes;
-    primes = (int *)malloc(numPrimes * sizeof(int));
+    primes = (int *)malloc(numPrimes * sizeof(int) + 1);
     int *currentPrime = primes; // pointer to current index of array of ints
     int *previousPrime;
     // find if startingAfter is prime, or what the first prime following startingAfter is
@@ -203,7 +205,8 @@ int* generatePrimes(int numPrimes, int startingAfter, int accuracyFactor) {
     for (int i = 1; i < numPrimes; i++) {
         previousPrime = currentPrime++; // assign pointer currentPrime to previousPrime, then increment currentPrime's pointer
         *currentPrime = generateNextPrime(*previousPrime, accuracyFactor); // pass value at current pointer index
-    } 
+    }
+    *(++currentPrime) = -1;
     return(primes);    
 }
 
@@ -212,11 +215,18 @@ int generateNextPrime(int currentPrime, int accuracyFactor) {
     bool isNotPrime = true;
     do {
         primeCandidate++;
-        if (!(primeCandidate % 2) || !(primeCandidate % 3) || !(primeCandidate % 5) || !(primeCandidate % 7)) {
-            // Get rid of these suckers right off the bat
+        if (       (!(primeCandidate % 2) && primeCandidate != 2)
+                || (!(primeCandidate % 3) && primeCandidate != 3)
+                || (!(primeCandidate % 5) && primeCandidate != 5)
+                || (!(primeCandidate % 7) && primeCandidate != 7)) {
             continue;
         }
         else {
+            if (   primeCandidate == 2 
+                || primeCandidate == 3
+                || primeCandidate == 5
+                || primeCandidate == 7)
+                return primeCandidate;
             isNotPrime = millerRabin(primeCandidate, accuracyFactor);
         }
     } while (isNotPrime);
@@ -347,7 +357,6 @@ int* randomSequence(int minVal, int maxVal, int sequenceLength) {
         *(pool + randomIndex) = *(pool + poolSize); // replace that element in the pool with the last element of the pool
         poolSize--; // Decrease pool size to ignore that last element
     }
-    printf("\n");
     return randomSeq;
 }
 
