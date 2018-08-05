@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
         /* Set argument defaults */
         arguments.outfile = NULL;
         arguments.numPrimes = 5;
-        arguments.startingAfter = 1;
+        arguments.startingAfter = 2;
         arguments.accuracyFactor = -1;
 
         argp_parse(&argp, argc, argv, 0, 0, &arguments);
@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
 
         numPrimes = arguments.numPrimes;
         startingAfter = arguments.startingAfter;
-        accuracyFactor = arguments.startingAfter;
+        accuracyFactor = arguments.accuracyFactor;
     }
     int *primes = generatePrimes(numPrimes, startingAfter, accuracyFactor);
     int *currentPrime = primes;
@@ -146,7 +146,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < (numPrimes/10 + numPrimes % 10); i++){
         j = 0;
         while (j++ < 10 && *currentPrime != -1){
-            fprintf(outstream, "%10d", *(currentPrime++));
+            fprintf(outstream, "%7d", *(currentPrime++));
         }
         fprintf(outstream, "\n");
         if (*currentPrime == -1)
@@ -166,11 +166,9 @@ bool getNumPrimesToGenerate(int *numPrimes, int *startingAfter, int *accuracyFac
 
         printf("Roughly how accurate do you wish this probabilistic approach to be? \n\t N.B. Enter some number greater than 10, so as to reduce\n\tthe chance of falsely identifying a composite number as the next possible prime.\n");
         scanf("%d", accuracyFactor);
-
         if (*accuracyFactor < 10) {
-            printf("You chose an accuracy factor less than 10; do you wish to use the deterministic Miller Rabin algorithm instead? Y or N:");
-            scanf("%c", &useDeterministic);
-
+            printf("You chose an accuracy factor less than 10; do you wish to use the deterministic Miller Rabin algorithm? Y or N:\n");
+            scanf(" %c", &useDeterministic);
             if (useDeterministic == 'Y' || useDeterministic == 'y') {
                 return true; // use deterministic Miller Rabin algorithm
             }
@@ -184,17 +182,16 @@ bool getNumPrimesToGenerate(int *numPrimes, int *startingAfter, int *accuracyFac
 
 int* generatePrimes(int numPrimes, int startingAfter, int accuracyFactor) {
     int *primes;
-    primes = (int *)malloc(numPrimes * sizeof(int) + 1);
+    primes = (int *)malloc(numPrimes * sizeof(int) + 1); // Extra int for indicating end of array 
     int *currentPrime = primes; // pointer to current index of array of ints
     int *previousPrime;
-    // find if startingAfter is prime, or what the first prime following startingAfter is
-    *currentPrime = generateNextPrime(startingAfter - 1, accuracyFactor); // start list with first prime
-    primes[0] = generateNextPrime(startingAfter - 1, accuracyFactor);
+    // find what the first prime strictly following startingAfter is
+    *currentPrime = generateNextPrime(startingAfter, accuracyFactor); // start list with first prime
     for (int i = 1; i < numPrimes; i++) {
         previousPrime = currentPrime++; // assign pointer currentPrime to previousPrime, then increment currentPrime's pointer
         *currentPrime = generateNextPrime(*previousPrime, accuracyFactor); // pass value at current pointer index
     }
-    *(++currentPrime) = -1;
+    *(++currentPrime) = -1; // TODO: What if I use unsigned ints and terminate with 0?
     return(primes);    
 }
 
