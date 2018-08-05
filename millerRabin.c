@@ -17,17 +17,18 @@ static char doc[] = "Implementation of the probabilistic and deterministic Mille
 /* A description of the arguments we accept. */
 static char args_doc[] = "numPrimes startingAfter accuracyFactor outfile";
 
-/* The options we understand. */
+/* The options we understand. 
+ * OPTION_ARG_OPTIONAL causes issues with spacing between option and argument*/
 static struct argp_option options[] = {
     {"numPrimes",          'n',             "NUM_PRIMES",                  0,
         "How many primes you wish to generate", 0},
-    {"startingAfter",      's',             "STARTING_AFTER",              OPTION_ARG_OPTIONAL, 
+    {"startingAfter",      's',             "STARTING_AFTER",              0, 
         "Look for primes greater than this number", 1},
-    {"accuracyFactor",     'a',             "ACCURACY_FACTOR",             OPTION_ARG_OPTIONAL, 
+    {"accuracyFactor",     'a',             "ACCURACY_FACTOR",             0, 
         "If using the probabilistic Miller Rabin \
             algorithm, specify how many iterations\
             should be performed (recommended to use >= 10)", 2},
-    {"outfile",            'o',             "FILE_PATH",                   OPTION_ARG_OPTIONAL,
+    {"outfile",            'o',             "FILE_PATH",                   0,
         "Specify path to file to create if you \
             don't want to output to command line.", 3},
     {0}
@@ -36,7 +37,7 @@ static struct argp_option options[] = {
 /* Used by main to communicate with parse_opt. */
 struct arguments
 {
-    char *args[4];                /* numPrimes, startingAfter, accuracyFactor, output*/
+    //char *args[2];                /* numPrimes, startingAfter, accuracyFactor, output*/
     int numPrimes, startingAfter, accuracyFactor;
     char *outfile;
 };
@@ -63,22 +64,6 @@ parse_opt (int key, char *arg, struct argp_state *state)
           case 'o':
             arguments->outfile = arg;
             break;
-
-          case ARGP_KEY_ARG:
-            if (state->arg_num > 4)
-              /* Too many arguments. */
-              argp_usage (state);
-
-            arguments->args[state->arg_num] = arg;
-
-            break;
-
-          case ARGP_KEY_END:
-            if (state->arg_num < 2)
-              /* Not enough arguments. */
-              argp_usage (state);
-            break;
-
           default:
             return ARGP_ERR_UNKNOWN;
           }
@@ -139,7 +124,9 @@ int main(int argc, char **argv) {
         arguments.numPrimes = 5;
         arguments.startingAfter = 1;
         arguments.accuracyFactor = -1;
-        argp_parse (&argp, argc, argv, 0, 0, &arguments);
+
+        argp_parse(&argp, argc, argv, 0, 0, &arguments);
+        
         /* Where do we send output? */
         if (arguments.outfile)
             outstream = fopen (arguments.outfile, "w");
